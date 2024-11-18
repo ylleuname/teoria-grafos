@@ -15,7 +15,7 @@ def ler_grafo(nome_arquivo):
 
         return num_vertices, num_arestas, matriz_adjacencia
 
-def representacaoGrafo(grafo, num_vertices, num_arestas):
+def print_grafo(grafo, num_vertices, num_arestas):
     #matriz de adjacência
     if grafo:
         print("\nMariz de Adjacencia:")
@@ -40,12 +40,38 @@ def representacaoGrafo(grafo, num_vertices, num_arestas):
     for i, vizinhos in enumerate(lista_adjacencia):
         print(f"Vértice {i+1}: {vizinhos}")
 
+def componentes_conexos(grafo, num_vertices):
+    visitados = [False] * num_vertices
+    componentes = []
+
+    def busca_prof(v, componente):
+        visitados[v] = True
+        componente.append(v + 1)  
+        for vizinho in range(num_vertices):
+            if grafo[v][vizinho] == 1 and not visitados[vizinho]:
+                busca_prof(vizinho, componente)
+
+    for v in range(num_vertices):
+        if not visitados[v]:
+            componente_atual = []
+            busca_prof(v, componente_atual)
+            componentes.append(componente_atual)
+
+
+    return componentes
+
 
 def main():
+    # questão 1
     nome_arquivo = "teste.txt"
     num_vertices, num_arestas, grafo = ler_grafo(nome_arquivo)
-    representacaoGrafo(grafo, num_vertices, num_arestas)
-    
-
+    # questão 3
+    print_grafo(grafo, num_vertices, num_arestas)
+    # questão 5
+    componentes = componentes_conexos(grafo, num_vertices)
+    print("\nComponentes Conexos:")
+    print(f"Número de componentes conexos: {len(componentes)}")
+    for i, componente in enumerate(componentes):
+        print(f"Componente {i+1} tem {len(componente)} vertices : {componente}")
 if __name__ == "__main__":
     main()
