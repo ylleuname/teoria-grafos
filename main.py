@@ -1,3 +1,5 @@
+from collections import deque
+
 def ler_grafo(nome_arquivo):
     with open(nome_arquivo, 'r') as arquivo:
         # lê a primeira linha e extrai o número de vértices e arestas
@@ -60,17 +62,84 @@ def componentes_conexos(grafo, num_vertices):
 
     return componentes
 
+# Funções para a questão 2
+def calcular_graus(grafo, num_vertices):
+    graus = []
+    for u in range(num_vertices):
+        grau = sum(grafo[u]) 
+        graus.append(grau)
+    return graus
+
+def salvar_informacoes_grafo(nome_arquivo_saida, num_vertices, num_arestas, graus):
+    with open(nome_arquivo_saida, 'w') as arquivo:
+        arquivo.write(f"{num_vertices}\n")
+        arquivo.write(f"{num_arestas}\n")
+        for i, grau in enumerate(graus):
+            arquivo.write(f"{i + 1} {grau}\n")
+
+def representacaoGrafo(grafo, num_vertices, num_arestas):
+    graus = calcular_graus(grafo, num_vertices)
+    nome_arquivo_saida = "informacoes_grafo.txt"
+    salvar_informacoes_grafo(nome_arquivo_saida, num_vertices, num_arestas, graus)
+    print(f"\nInformações do grafo salvas no arquivo: {nome_arquivo_saida}")
+
+# Funções para a questão 4
+def salvar_arvore_busca(nome_arquivo_saida, arvore):
+    with open(nome_arquivo_saida, 'w') as arquivo:
+        arquivo.write("Vertice Pai Nivel\n")
+        for vertice, (pai, nivel) in enumerate(arvore):
+            arquivo.write(f"{vertice + 1} {pai + 1 if pai != -1 else 'None'} {nivel}\n")
+
+def busca_em_largura(grafo, num_vertices, inicio):
+    inicio -= 1  
+    visitados = [False] * num_vertices
+    fila = deque([inicio])
+    visitados[inicio] = True
+    arvore = [(-1, -1)] * num_vertices  
+    arvore[inicio] = (-1, 0)  
+
+    while fila:
+        atual = fila.popleft()
+        for vizinho in range(num_vertices):
+            if grafo[atual][vizinho] == 1 and not visitados[vizinho]:
+                visitados[vizinho] = True
+                fila.append(vizinho)
+                arvore[vizinho] = (atual, arvore[atual][1] + 1)
+
+    salvar_arvore_busca("bfs_arvore.txt", arvore)
+
+def busca_em_profundidade(grafo, num_vertices, inicio):
+    inicio -= 1  
+    visitados = [False] * num_vertices
+    arvore = [(-1, -1)] * num_vertices  
+
+    def dfs(v, pai, nivel):
+        visitados[v] = True
+        arvore[v] = (pai, nivel)
+        for vizinho in range(num_vertices):
+            if grafo[v][vizinho] == 1 and not visitados[vizinho]:
+                dfs(vizinho, v, nivel + 1)
+
+    dfs(inicio, -1, 0)
+    salvar_arvore_busca("dfs_arvore.txt", arvore)
 
 def main():
     # questão 1
     nome_arquivo = "teste.txt"
     num_vertices, num_arestas, grafo = ler_grafo(nome_arquivo)
+    # questão 2
+    representacaoGrafo(grafo, num_vertices, num_arestas)
     # questão 3
     print_grafo(grafo, num_vertices, num_arestas)
+    # questão 4
+    vertice_inicial = 1  
+    print(f"\nO vértice inicial para as buscas será: {vertice_inicial}")
+    busca_em_largura(grafo, num_vertices, vertice_inicial)
+    busca_em_profundidade(grafo, num_vertices, vertice_inicial)
     # questão 5
     componentes = componentes_conexos(grafo, num_vertices)
     print("\nComponentes Conexos:")
-    print(f"Número de componentes conexos: {len(componentes)}")
+    print(f"Quantidade de componentes conexos: {len(componentes)}")
     for i, componente in enumerate(componentes):
         print(f"Componente {i+1} tem {len(componente)} vertices : {componente}")
 if __name__ == "__main__":
