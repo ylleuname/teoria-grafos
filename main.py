@@ -2,16 +2,20 @@ from collections import deque
 
 def ler_grafo(nome_arquivo):
     with open(nome_arquivo, 'r') as arquivo:
-        # lê a primeira linha e extrai o número de vértices e arestas
-        num_vertices, num_arestas = map(int, arquivo.readline().strip().split())
+        # Lê a primeira linha e extrai o número de vértices
+        num_vertices = int(arquivo.readline().strip())
         matriz_adjacencia = [[0 for _ in range(num_vertices)] for _ in range(num_vertices)]
+        num_arestas = 0
 
+        # Lê as demais linhas para preencher a matriz de adjacência
         for linha in arquivo:
             u, v = map(int, linha.strip().split())
-            u -= 1 
+            u -= 1
             v -= 1
 
-            # marca a existência de conexão entre os vértices
+            # Marca a existência de conexão entre os vértices
+            if matriz_adjacencia[u][v] == 0:  # Evita contar arestas duplicadas
+                num_arestas += 1
             matriz_adjacencia[u][v] = 1
             matriz_adjacencia[v][u] = 1
 
