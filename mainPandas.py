@@ -1,8 +1,6 @@
 from collections import deque
 import pandas as pd
 
-import pandas as pd
-
 def ler_grafo(nome_arquivo, chunk_size=1000):
     with open(nome_arquivo, 'r') as arquivo:
         # Lê a primeira linha e extrai o número de vértices
@@ -98,28 +96,31 @@ def salvar_arvore_busca(nome_arquivo_saida, arvore):
         for vertice, (pai, nivel) in enumerate(arvore):
             arquivo.write(f"{vertice + 1} {pai + 1 if pai != -1 else 'None'} {nivel}\n")
 
-def busca_em_largura(grafo, num_vertices, inicio):
-    inicio -= 1  
+def busca_em_largura(grafo, num_vertices):
     visitados = [False] * num_vertices
-    fila = deque([inicio])
-    visitados[inicio] = True
-    arvore = [(-1, -1)] * num_vertices  
-    arvore[inicio] = (-1, 0)  
+    arvore = [(-1, -1)] * num_vertices  # (pai, nível)
+    fila = deque()
 
-    while fila:
-        atual = fila.popleft()
-        for vizinho in range(num_vertices):
-            if grafo[atual][vizinho] == 1 and not visitados[vizinho]:
-                visitados[vizinho] = True
-                fila.append(vizinho)
-                arvore[vizinho] = (atual, arvore[atual][1] + 1)
+    for inicio in range(num_vertices):
+        if not visitados[inicio]:
+            # Inicia a BFS a partir de um novo componente
+            fila.append(inicio)
+            visitados[inicio] = True
+            arvore[inicio] = (-1, 0)  # Raiz do componente
+
+            while fila:
+                atual = fila.popleft()
+                for vizinho in range(num_vertices):
+                    if grafo[atual][vizinho] == 1 and not visitados[vizinho]:
+                        visitados[vizinho] = True
+                        fila.append(vizinho)
+                        arvore[vizinho] = (atual, arvore[atual][1] + 1)
 
     salvar_arvore_busca("bfs_arvore.txt", arvore)
 
-def busca_em_profundidade(grafo, num_vertices, inicio):
-    inicio -= 1  
+def busca_em_profundidade(grafo, num_vertices):
     visitados = [False] * num_vertices
-    arvore = [(-1, -1)] * num_vertices  
+    arvore = [(-1, -1)] * num_vertices  # (pai, nível)
 
     def dfs(v, pai, nivel):
         visitados[v] = True
@@ -128,12 +129,16 @@ def busca_em_profundidade(grafo, num_vertices, inicio):
             if grafo[v][vizinho] == 1 and not visitados[vizinho]:
                 dfs(vizinho, v, nivel + 1)
 
-    dfs(inicio, -1, 0)
+    for inicio in range(num_vertices):
+        if not visitados[inicio]:
+            dfs(inicio, -1, 0)  # Inicia uma nova DFS para um componente desconectado
+
     salvar_arvore_busca("dfs_arvore.txt", arvore)
+
 
 def main():
     # questão 1
-    nome_arquivo = "as_graph.txt"
+    nome_arquivo = "teste.txt"
     num_vertices, num_arestas, grafo = ler_grafo(nome_arquivo)
     # questão 2
     representacaoGrafo(grafo, num_vertices, num_arestas)
@@ -142,8 +147,8 @@ def main():
     # questão 4
     vertice_inicial = 1  
     #print(f"\nO vértice inicial para as buscas será: {vertice_inicial}")
-    busca_em_largura(grafo, num_vertices, vertice_inicial)
-    busca_em_profundidade(grafo, num_vertices, vertice_inicial)
+    busca_em_largura(grafo, num_vertices)
+    busca_em_profundidade(grafo, num_vertices)
     # questão 5
     componentes = componentes_conexos(grafo, num_vertices)
     #print("\nComponentes Conexos:")
