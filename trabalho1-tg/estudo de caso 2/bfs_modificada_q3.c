@@ -125,7 +125,6 @@ int main() {
     // Ler grafo da matriz de adjacência
     int** grafo = ler_grafo(nome_arquivo_grafo, &num_vertices, &num_arestas);
     printf("Grafo carregado com %d vértices e %d arestas.\n", num_vertices, num_arestas);
-    liberar_matriz(grafo, num_vertices);
     
     while (1) {
         int vertice_inicial;
@@ -147,6 +146,7 @@ int main() {
         int nivel_maximo = busca_em_largura(grafo, num_vertices, vertice_inicial);
         printf("A maior distância do vértice %d é %d.\n", vertice_inicial + 1, nivel_maximo);
     }
+    liberar_matriz(grafo, num_vertices);
 
 
     return 0;
