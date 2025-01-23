@@ -386,16 +386,79 @@ double bytes_para_mb(size_t bytes) {
 }
 
 
+// PARTE 2 DO TRABALHO ******************************************
+
+// Alocar uma matriz de adjacência para pesos (float)
+float** alocar_matriz_pesos(int num_vertices) {
+    float** matriz = (float**)malloc(num_vertices * sizeof(float*));
+    for (int i = 0; i < num_vertices; i++) {
+        matriz[i] = (float*)calloc(num_vertices, sizeof(float));
+    }
+    return matriz;
+}
+
+// Liberar matriz de adjacência para pesos
+void liberar_matriz_pesos(float** matriz, int num_vertices) {
+    for (int i = 0; i < num_vertices; i++) {
+        free(matriz[i]);
+    }
+    free(matriz);
+}
+
+// Função para ler grafo ponderado a partir de um arquivo
+float** ler_grafo_ponderado(const char* nome_arquivo, int* num_vertices, int* num_arestas) {
+    FILE* arquivo = fopen(nome_arquivo, "r");
+    if (!arquivo) {
+        perror("Erro ao abrir o arquivo");
+        exit(EXIT_FAILURE);
+    }
+
+    // Ler número de vértices
+    fscanf(arquivo, "%d", num_vertices);
+    float** grafo = alocar_matriz_pesos(*num_vertices);
+    *num_arestas = 0;
+
+    // Ler arestas e pesos
+    int u, v;
+    float peso;
+    while (fscanf(arquivo, "%d %d %f", &u, &v, &peso) != EOF) {
+        u--; v--;  // Ajustar para índices baseados em 0
+        if (grafo[u][v] == 0.0) {
+            (*num_arestas)++;
+        }
+        grafo[u][v] = peso;
+        grafo[v][u] = peso;  // Grafo não dirigido
+    }
+
+    fclose(arquivo);
+    return grafo;
+}
+
+// Função para imprimir a matriz de adjacência ponderada
+void imprimir_matriz_pesos(float** grafo, int num_vertices) {
+    printf("Matriz de Adjacência com Pesos:\n");
+    for (int i = 0; i < num_vertices; i++) {
+        for (int j = 0; j < num_vertices; j++) {
+            printf("%.2f ", grafo[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+
+
+
 // Função principal
 int main() {
-    const char* nome_arquivo = "collaboration_graph.txt";
+    //const char* nome_arquivo = "teste.txt";
     const char* bfs_saida = "bfs_arvore.txt";
     const char* dfs_saida = "dfs_arvore.txt";
     const char* info_saida = "informacoes_grafo.txt";
     const char* componentes_saida = "componentes_conexos.txt"; 
 
+
     int num_vertices, num_arestas;
-    int** grafo = ler_grafo(nome_arquivo, &num_vertices, &num_arestas);
+    /*int** grafo = ler_grafo(nome_arquivo, &num_vertices, &num_arestas);
 
     int* graus = calcular_graus(grafo, num_vertices);
     //salvar_informacoes_grafo(info_saida, num_vertices, num_arestas, graus);
@@ -429,6 +492,16 @@ int main() {
     liberar_matriz(grafo, num_vertices);
     free(graus);
 
-    printf("Processamento concluido!\n");
+    printf("Processamento concluido!\n");*/
+
+    // Grafo com peso ****************************************
+    const char* nome_arquivo_entrada = "teste.txt";
+    const char* nome_arquivo_saida = "informacoes_grafo_ponderado.txt";
+
+    int num_verticesp, num_arestasp;
+    float** grafop = ler_grafo_ponderado(nome_arquivo_entrada, &num_verticesp, &num_arestasp);
+    imprimir_matriz_pesos(grafop, num_verticesp);
+
+    liberar_matriz_pesos(grafop, num_vertices);
     return 0;
 }
