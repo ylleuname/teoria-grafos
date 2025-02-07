@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
+#include <float.h> // Para usar FLT_MAX
+#include <limits.h> // Para INT_MAX
 
 // questão 1 - leitura do gravo
 int** alocar_matriz(int num_vertices) {
@@ -79,6 +81,12 @@ typedef struct No {
 typedef struct ListaAdj {
     No* cabeca;
 } ListaAdj;
+
+// Estrutura para uso do Dijkstra nos grafos ponderados
+typedef struct {
+    int vertice;
+    float distancia;
+} Nodo;
 
 // Função para alocar e inicializar a lista de adjacência
 ListaAdj* alocar_lista_adj(int num_vertices) {
@@ -388,16 +396,7 @@ double bytes_para_mb(size_t bytes) {
 
 // PARTE 2 DO TRABALHO ******************************************
 
-// Alocar uma matriz de adjacência para pesos (float)
-float** alocar_matriz_pesos(int num_vertices) {
-    float** matriz = (float**)malloc(num_vertices * sizeof(float*));
-    for (int i = 0; i < num_vertices; i++) {
-        matriz[i] = (float*)calloc(num_vertices, sizeof(float));
-    }
-    return matriz;
-}
-
-// Liberar matriz de adjacência para pesos
+// Liberar matriz de adjacência para pesos - QUESTÃO 1
 void liberar_matriz_pesos(float** matriz, int num_vertices) {
     for (int i = 0; i < num_vertices; i++) {
         free(matriz[i]);
@@ -405,7 +404,23 @@ void liberar_matriz_pesos(float** matriz, int num_vertices) {
     free(matriz);
 }
 
-// Função para ler grafo ponderado a partir de um arquivo
+float** alocar_matriz_pesos(int num_vertices) {
+    float** matriz = (float**)malloc(num_vertices * sizeof(float*));
+    if (!matriz) {
+        fprintf(stderr, "Erro ao alocar memória para matriz\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < num_vertices; i++) {
+        matriz[i] = (float*)calloc(num_vertices, sizeof(float));
+        if (!matriz[i]) {
+            fprintf(stderr, "Erro ao alocar memória para linha %d da matriz\n", i);
+            exit(EXIT_FAILURE);
+        }
+    }
+    return matriz;
+}
+
 float** ler_grafo_ponderado(const char* nome_arquivo, int* num_vertices, int* num_arestas) {
     FILE* arquivo = fopen(nome_arquivo, "r");
     if (!arquivo) {
@@ -414,25 +429,40 @@ float** ler_grafo_ponderado(const char* nome_arquivo, int* num_vertices, int* nu
     }
 
     // Ler número de vértices
-    fscanf(arquivo, "%d", num_vertices);
+    if (fscanf(arquivo, "%d", num_vertices) != 1) {  
+        fprintf(stderr, "Erro ao ler o número de vértices\n");
+        exit(EXIT_FAILURE);
+    }
+    printf("Número de vértices lido: %d\n", *num_vertices);
+
     float** grafo = alocar_matriz_pesos(*num_vertices);
     *num_arestas = 0;
 
     // Ler arestas e pesos
     int u, v;
     float peso;
-    while (fscanf(arquivo, "%d %d %f", &u, &v, &peso) != EOF) {
-        u--; v--;  // Ajustar para índices baseados em 0
+    while (fscanf(arquivo, "%d %d %f", &u, &v, &peso) == 3) {
+        printf("Lendo aresta: %d -> %d (peso: %.2f)\n", u, v, peso);
+        u--; v--;
+
+        if (u < 0 || u >= *num_vertices || v < 0 || v >= *num_vertices) {
+            fprintf(stderr, "Erro: vértice fora do intervalo! (%d, %d)\n", u, v);
+            exit(EXIT_FAILURE);
+        }
+
         if (grafo[u][v] == 0.0) {
             (*num_arestas)++;
         }
         grafo[u][v] = peso;
-        grafo[v][u] = peso;  // Grafo não dirigido
+        grafo[v][u] = peso;
+        printf("Total de arestas até agora: %d\n", *num_arestas);
     }
 
     fclose(arquivo);
     return grafo;
 }
+
+
 
 // Função para imprimir a matriz de adjacência ponderada
 void imprimir_matriz_pesos(float** grafo, int num_vertices) {
@@ -445,12 +475,110 @@ void imprimir_matriz_pesos(float** grafo, int num_vertices) {
     }
 }
 
+// QUESTÃO 2
+// ---------- Dijkstra
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <float.h>
+#include <stdbool.h>
+#include <time.h>
+
+void dijkstra(float** grafo, int num_vertices, int inicio, int destino, float* distancia, int* predecessor) {
+    bool* visitado = (bool*)calloc(num_vertices, sizeof(bool));
+
+    for (int i = 0; i < num_vertices; i++) {
+        distancia[i] = FLT_MAX; // Inicializa com "infinito"
+        predecessor[i] = -1;    // Sem predecessor
+    }
+
+    distancia[inicio] = 0;
+
+    for (int count = 0; count < num_vertices - 1; count++) {
+        int u = -1;
+        for (int v = 0; v < num_vertices; v++) {
+            if (!visitado[v] && (u == -1 || distancia[v] < distancia[u])) {
+                u = v;
+            }
+        }
+
+        if (u == -1) break; // Não há mais vértices alcançáveis
+
+        visitado[u] = true;
+
+        for (int v = 0; v < num_vertices; v++) {
+            if (grafo[u][v] != 0.0 && distancia[u] != FLT_MAX && distancia[u] + grafo[u][v] < distancia[v]) {
+                distancia[v] = distancia[u] + grafo[u][v];
+                predecessor[v] = u;
+            }
+        }
+    }
+
+    free(visitado);
+}
+
+void reconstruir_caminho(int destino, int* predecessor, int* caminho, int* tamanho_caminho) {
+    int atual = destino;
+    *tamanho_caminho = 0;
+
+    while (atual != -1) {
+        caminho[(*tamanho_caminho)++] = atual;
+        atual = predecessor[atual];
+    }
+
+    // Inverter o caminho (para ter do início ao destino)
+    for (int i = 0; i < *tamanho_caminho / 2; i++) {
+        int temp = caminho[i];
+        caminho[i] = caminho[*tamanho_caminho - 1 - i];
+        caminho[*tamanho_caminho - 1 - i] = temp;
+    }
+}
+
+void encontrar_distancia_caminho(const char* nome_arquivo, int inicio, int destino) {
+    int num_vertices, num_arestas;
+    float** grafo_ponderado = ler_grafo_ponderado(nome_arquivo, &num_vertices, &num_arestas);
+
+    float* distancia_ponderado = (float*)malloc(num_vertices * sizeof(float));
+    int* predecessor_ponderado = (int*)malloc(num_vertices * sizeof(int));
+    int* caminho = (int*)malloc(num_vertices * sizeof(int));
+    int tamanho_caminho;
+
+    if (inicio < 1 || inicio > num_vertices || destino < 1 || destino > num_vertices) {
+        printf("Erro: Vertices de inicio ou destino invalidos.\n");
+        liberar_matriz_pesos(grafo_ponderado, num_vertices);
+        free(distancia_ponderado);
+        free(predecessor_ponderado);
+        free(caminho);
+        return;
+    }
+
+    inicio--; // Ajustar para índice baseado em 0
+    destino--;
+
+    dijkstra(grafo_ponderado, num_vertices, inicio, destino, distancia_ponderado, predecessor_ponderado);
+    reconstruir_caminho(destino, predecessor_ponderado, caminho, &tamanho_caminho);
+
+    if (tamanho_caminho == 0) {
+        printf("Nao existe caminho entre %d e %d.\n", inicio + 1, destino + 1);
+    } else {
+        printf("Distancia entre %d e %d: %.2f\n", inicio + 1, destino + 1, distancia_ponderado[destino]);
+        printf("Caminho: ");
+        for (int i = 0; i < tamanho_caminho; i++) {
+            printf("%d ", caminho[i] + 1); // Imprimir vértices + 1
+        }
+        printf("\n");
+    }
+
+    liberar_matriz_pesos(grafo_ponderado, num_vertices);
+    free(distancia_ponderado);
+    free(predecessor_ponderado);
+    free(caminho);
+}
 
 
 // Função principal
 int main() {
-    //const char* nome_arquivo = "teste.txt";
+    const char* nome_arquivo = "teste.txt";
     const char* bfs_saida = "bfs_arvore.txt";
     const char* dfs_saida = "dfs_arvore.txt";
     const char* info_saida = "informacoes_grafo.txt";
@@ -498,10 +626,36 @@ int main() {
     const char* nome_arquivo_entrada = "teste.txt";
     const char* nome_arquivo_saida = "informacoes_grafo_ponderado.txt";
 
-    int num_verticesp, num_arestasp;
-    float** grafop = ler_grafo_ponderado(nome_arquivo_entrada, &num_verticesp, &num_arestasp);
-    imprimir_matriz_pesos(grafop, num_verticesp);
-
-    liberar_matriz_pesos(grafop, num_vertices);
+    int num_verticesp,  num_arestasp;
+    int opcao;
+    printf("Escolha o tipo de grafo:\n");
+    printf("1 - Grafo não ponderado\n");
+    printf("2 - Grafo ponderado\n");
+    printf("Opção: ");
+    scanf("%d", &opcao);
+    
+    if (opcao == 1) {
+        int** grafo = ler_grafo(nome_arquivo, &num_vertices, &num_arestas);
+        printf("Grafo não ponderado carregado com %d vértices e %d arestas.\n", num_vertices, num_arestas);
+        liberar_matriz(grafo, num_vertices);
+    } else if (opcao == 2) {
+        float** grafop = ler_grafo_ponderado(nome_arquivo, &num_verticesp, &num_arestasp);
+        printf("Grafo ponderado carregado com %d vértices e %d arestas.\n", num_verticesp, num_arestasp);
+        imprimir_matriz_pesos(grafop, num_verticesp);
+          
+        int origem, destino;
+        printf("Digite o vértice de origem: ");
+        scanf("%d", &origem);
+        printf("Digite o vértice de destino: ");
+        scanf("%d", &destino);
+        
+        origem--; destino--;  // Ajustar para índice base 0
+    
+        encontrar_distancia_caminho(nome_arquivo, origem, destino);
+        liberar_matriz_pesos(grafop, num_vertices);
+    } else {
+        printf("Opção inválida!\n");
+    }
+      
     return 0;
 }
